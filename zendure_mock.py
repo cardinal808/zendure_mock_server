@@ -27,7 +27,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = "2026.11.1"
+VERSION = "2026.11.2"
 
 # kWh per pack, zelfde mapping als sensor "Zendure 2400 AC Totale Capaciteit" (Gielz)
 PACK_KWH = {5: 2.88, 70: 1.92, 250: 0.96, 240: 1.92, 300: 1.92, 350: 2.88, 500: 2.40}
@@ -248,7 +248,14 @@ class Sim:
         props = body["properties"]
         entry["props"] = props
         with self.lock:
-            if str(body.get("sn")) != self.sn:
+            sn = str(body.get("sn")).strip()
+            if sn.lower() in ("unknown", "unavailable", "none", ""):
+                entry["status"] = "LET OP"
+                entry["meldingen"].append(
+                    f"sn '{sn}': serienummer-sensor had nog geen waarde (opstarten of Zendure "
+                    "onbereikbaar); niet toegepast")
+                return self._log(entry), 200
+            if sn != self.sn:
                 entry["status"] = "FOUT"
                 entry["meldingen"].append(f"sn '{body.get('sn')}' klopt niet (verwacht {self.sn}); niet toegepast")
                 return self._log(entry), 200

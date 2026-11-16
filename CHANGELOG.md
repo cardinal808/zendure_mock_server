@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026.11.2 (16-11-2026)
+- Schrijfactie met `sn` `unknown`/`unavailable` is nu **LET OP** in plaats van FOUT: de serienummer-sensor had nog geen waarde (bijv. noodstop of moduswissel vlak na het opstarten van HA of terwijl het IP-adres nog niet was ingevuld). Wordt nog steeds niet toegepast. Een écht ander serienummer blijft FOUT.
+
 ## 2026.11.1 (16-11-2026)
 Eerste versie.
 - zenSDK-mock van de Zendure SolarFlow 2400 AC: `GET /properties/report` en `POST /properties/write`
