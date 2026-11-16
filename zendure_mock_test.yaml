@@ -1,0 +1,92 @@
+# Zendure mock - testpakket. ALLEEN in de TEST-installatie in packages zetten!
+# Hoort bij zendure_mock.py. Gebruikt hetzelfde IP:poort als de Zendure in de set
+# (input_text.zendure_2400_ac_ip_adres, bv. 192.168.1.60:8080).
+#
+# Geeft:
+#   sensor.mock_pv_vermogen            externe omvormer (W)  -> "Zonnepanelen sensor" / omvormer-vermogenssensor
+#   sensor.mock_pv_energie             PV-opbrengst (kWh)
+#   sensor.mock_huisverbruik           huisverbruik zonder batterij (W)
+#   sensor.mock_zendure_simulatie      aantal schrijfacties vandaag + tellers als attributen
+#   number.mock_omvormer_limiet        productielimiet 0-100 % -> limiter voor Negatieve prijs
+#   script.mock_zendure_scenario       simulatie aanpassen vanuit HA
+
+rest:
+  - resource_template: "http://{{ states('input_text.zendure_2400_ac_ip_adres') }}/mock/state"
+    scan_interval: 5
+    sensor:
+      - name: "Mock PV Vermogen"
+        unique_id: mock_pv_vermogen
+        value_template: "{{ value_json.pv_w | round(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+
+      - name: "Mock Huisverbruik"
+        unique_id: mock_huisverbruik
+        value_template: "{{ value_json.load_w | round(0) }}"
+        unit_of_measurement: "W"
+        device_class: power
+        state_class: measurement
+
+      - name: "Mock Zendure Simulatie"
+        unique_id: mock_zendure_simulatie
+        icon: mdi:test-tube
+        value_template: "{{ value_json.writes_today }}"
+        unit_of_measurement: "writes"
+        json_attributes:
+          - soc
+          - pv_limit_pct
+          - flash_writes_today
+          - warnings_today
+          - relais_today
+          - speed
+
+sensor:
+  - platform: integration
+    name: "Mock PV Energie"
+    unique_id: mock_pv_energie
+    source: sensor.mock_pv_vermogen
+    unit_prefix: k
+    round: 3
+    method: left
+
+template:
+  - number:
+      - name: "Mock Omvormer Limiet"
+        unique_id: mock_omvormer_limiet
+        icon: mdi:tune-vertical
+        min: 0
+        max: 100
+        step: 1
+        state: "{{ state_attr('sensor.mock_zendure_simulatie', 'pv_limit_pct') | float(100) }}"
+        set_value:
+          - action: rest_command.mock_zendure_set
+            data:
+              key: pv_limit_pct
+              value: "{{ value }}"
+
+rest_command:
+  mock_zendure_set:
+    url: "http://{{ states('input_text.zendure_2400_ac_ip_adres') }}/mock/set"
+    method: POST
+    content_type: "application/json"
+    payload: '{"{{ key }}": {{ value | to_json }}}'
+
+script:
+  mock_zendure_scenario:
+    alias: Mock Zendure Scenario
+    icon: mdi:test-tube
+    description: >-
+      Past de simulatie aan. key: soc, load_w, p1_override_w, pv_peak_w, pv_limit_pct,
+      clouds, speed, spike (seconden waterkoker), calibrating (true/false), error (0/1).
+      value: getal, true/false of null (= terug naar profiel).
+    fields:
+      key:
+        example: soc
+      value:
+        example: 20
+    sequence:
+      - action: rest_command.mock_zendure_set
+        data:
+          key: "{{ key }}"
+          value: "{{ value }}"

@@ -1,0 +1,17 @@
+[Unit]
+Description=Zendure zenSDK + HomeWizard P1 mock (test)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=TZ=Europe/Amsterdam PYTHONUNBUFFERED=1
+DynamicUser=yes
+StateDirectory=zendure-mock
+WorkingDirectory=/var/lib/zendure-mock
+ExecStart=/usr/bin/python3 /opt/zendure-mock/zendure_mock.py --port 8080 --soc 50 --pv-peak 4000 --packs 4 --log /var/lib/zendure-mock/writes.jsonl
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
